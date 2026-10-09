@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tagwise: hashtags for Indian creators</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F2F5F8;--card:#fff;--ink:#10262E;--mute:#5B6E76;--line:#D5DEE3;--teal:#0E5A67;--gold:#F2A900;--goldbg:#FFF4D6;--mega:#B4412F;--mid:#0E5A67;--niche:#4F7A3A;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0C1A20;--card:#14262E;--ink:#E8F0F3;--mute:#93A7AF;--line:#25404A;--teal:#58B7C6;--goldbg:#3A2F10;--mega:#E88A78;--mid:#58B7C6;--niche:#8FC273}}
+:root[data-theme="dark"]{--bg:#0C1A20;--card:#14262E;--ink:#E8F0F3;--mute:#93A7AF;--line:#25404A;--teal:#58B7C6;--goldbg:#3A2F10;--mega:#E88A78;--mid:#58B7C6;--niche:#8FC273}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:16px/1.55 'DM Sans',system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:28px 18px 60px}
+h1{font:800 clamp(30px,6vw,46px)/1.05 'Bricolage Grotesque',system-ui,sans-serif;margin:0 0 8px;letter-spacing:-.02em}
+.sub{color:var(--mute);margin:0 0 22px;max-width:56ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+textarea{width:100%;min-height:110px;resize:vertical;border:1px solid var(--line);border-radius:10px;padding:12px;background:transparent;color:inherit;font:inherit}
+textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+select{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:var(--card);color:inherit;font:inherit}
+button{font:inherit;font-weight:500;border:0;border-radius:10px;padding:10px 18px;cursor:pointer;background:var(--gold);color:#10262E}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+button:disabled{opacity:.55;cursor:wait}
+.banner{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:var(--goldbg);font-size:14px}
+h2{font:600 20px/1.2 'Bricolage Grotesque',system-ui,sans-serif;margin:26px 0 10px}
+.tag{display:flex;gap:10px;align-items:baseline;padding:10px 0;border-top:1px solid var(--line)}
+.tag:first-child{border-top:0}
+.tag b{font-weight:600;font-size:18px;min-width:0;word-break:break-all}
+.pill{font-size:12px;border:1px solid currentColor;border-radius:99px;padding:1px 8px;white-space:nowrap}
+.mega{color:var(--mega)}.mid{color:var(--mid)}.niche{color:var(--niche)}
+.why{color:var(--mute);font-size:14px;margin:0}
+.meta{margin-left:auto;font-size:13px;color:var(--mute);text-align:right;white-space:nowrap}
+.snap{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:14px;background:var(--card)}
+.chip i{font-style:normal;color:var(--mute);font-size:12px;margin-left:4px}
+small,.note{color:var(--mute);font-size:13px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>Tagwise</h1>
+<p class="sub">Paste your caption. Get hashtags matched to your post and checked against a snapshot of what is trending in India.</p>
+
+<div class="card">
+<label for="cap" class="note">Your caption or post idea</label>
+<textarea id="cap" placeholder="Example: My 5-step night skincare routine for glowing skin before Diwali"></textarea>
+<div class="row">
+<select id="plat" aria-label="Platform"><option value="5">Instagram (5 tags)</option><option value="10">Other platforms (10 tags)</option></select>
+<button id="go">Get hashtags</button>
+</div>
+<div id="banner" class="banner hide"></div>
+</div>
+
+<div id="out"></div>
+
+<h2>Trending now in India (YouTube)</h2>
+<p class="note">Hashtags used by videos on YouTube India's trending charts, refreshed every few hours. The number is how many trending videos use the tag.</p>
+<div id="snap" class="snap"></div>
+<p class="note" style="margin-top:14px">Instagram now limits Feed posts and Reels to five hashtags, so the first five results are your best set. Size tiers are estimates (mega is over 100M posts, mid 1M to 100M, niche under 1M), so check a tag's size on Instagram before relying on it.</p>
+</main>
+
+<script>
+const API_BASE="https://YOUR-API.onrender.com"; // replace with your deployed API URL
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const say=m=>{$("banner").textContent=m;$("banner").classList.remove("hide")};
+
+async function loadTrending(){
+ try{
+  const r=await fetch(API_BASE+"/v1/trending?limit=24");const d=await r.json();
+  $("snap").innerHTML=d.items.length?d.items.map(t=>`<span class="chip">${esc(t.tag)}<i>${t.mentions} ${t.new?"new":"videos"}</i></span>`).join(""):'<span class="note">No trend data yet. Run the worker once to fill this in.</span>';
+ }catch(e){$("snap").innerHTML='<span class="note">Could not load trending tags.</span>'}
+}
+
+function render(items){
+ const n=+$("plat").value,five=items.slice(0,n),rest=items.slice(n);
+ const row=t=>`<div class="tag"><b>${esc(t.tag)}</b><span class="pill ${esc(t.tier)}">${esc(t.tier)}</span><p class="why">${esc(t.why)}</p><span class="meta">${t.trending?"trending on YouTube<br>"+t.mentions+" videos":"AI suggestion<br>size is an estimate"}</span></div>`;
+ let h=`<h2>Your best ${n}</h2><div class="card">${five.map(row).join("")}</div>`;
+ if(rest.length)h+=`<h2>More options</h2><div class="card">${rest.map(row).join("")}</div>`;
+ h+=`<div class="row"><button id="copy">Copy best ${n}</button></div>`;
+ $("out").innerHTML=h;
+ $("copy").onclick=async()=>{try{await navigator.clipboard.writeText(five.map(t=>t.tag).join(" "));$("copy").textContent="Copied"}catch(e){$("copy").textContent="Copy failed"}};
+}
+
+$("go").onclick=async()=>{
+ const caption=$("cap").value.trim();
+ if(caption.length<3){say("Add a caption first.");return}
+ $("banner").classList.add("hide");$("go").disabled=true;$("go").textContent="Working";
+ try{
+  const r=await fetch(API_BASE+"/v1/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({caption,count:+$("plat").value})});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.detail||"Request failed");
+  render(d.items);
+  if(!d.trend_data)say("No trend data loaded yet, so these are AI suggestions only.");
+ }catch(e){say(e.message)}
+ $("go").disabled=false;$("go").textContent="Get hashtags";
+};
+loadTrending();
+</script>
+</body>
+</html>
